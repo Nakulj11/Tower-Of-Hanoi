@@ -3,7 +3,7 @@ import numpy as np
 from GameElements import Disk
 import cv2
 
-class Vision(object):
+class Vision(object): 
 
     
 

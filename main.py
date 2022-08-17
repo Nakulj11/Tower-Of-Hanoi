@@ -11,7 +11,8 @@ import os
 
 #disks, towers, and color ranges
 disks = [Disk("a", np.array([60,120,120]), np.array([85,255,255])), #Green
-         Disk("b", np.array([160,25,76]), np.array([170,155,255])) #Purple
+         Disk("b", np.array([80,103,200]), np.array([100,220,255])), #Light Blue 
+         Disk("c", np.array([101,200,72]), np.array([150,255,225])) #Dark Blue 
          ]
 
 towers = [Tower("t1", cv2.aruco.DICT_4X4_50, 0),
