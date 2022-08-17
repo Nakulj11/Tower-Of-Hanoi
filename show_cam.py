@@ -10,7 +10,6 @@ import os
 
 from robot_controller import MoveGroupPythonInterface
 
-ur5e_arm = MoveGroupPythonInterface()
 
 top_t1 = [0.7324, -0.8476, 1.2450, -1.9356, -1.5114, 0.7473]
 top_t3 = [0.8781, -1.0205, 1.5414, -2.0682, -1.5070, 0.8929]
@@ -26,7 +25,7 @@ d2_t2 = [0.7956056594848633, -0.8435257238200684, 1.490213696156637, -2.21407618
 d1_t3 = [0.8758759498596191, -0.8788140577128907, 1.6598723570453089, -2.354396482507223, -1.4965842405902308, 0.9549274444580078]
 
 #disks, towers, and color ranges
-disks = [Disk("a", np.array([80,110,100]), np.array([90,255,255])), #Green
+disks = [Disk("a", np.array([80,100,100]), np.array([90,255,255])), #Green
          Disk("b", np.array([90,100,100]), np.array([100,255,255])), #Light Blue 
          Disk("c", np.array([101,120,90]), np.array([130,255,255])) #Dark Blue 
          ]
@@ -58,32 +57,11 @@ def main():
     
     ret, frame = cap.read()
     frame = frame[230:, 230:]
-    cap.release()
-    
-    setInitialState(vision.getInitialState(frame, disks, towers))
-    plan = getPlan("domainHanoi.pddl", "problemHanoi.pddl")
-    #plan = []
-    steps = {1: pickUp,
-              2: pickUpFromStack,
-              3: placeOnTower,
-              4: placeOnStack}
 
-    print("Press [Enter] to start")
-    raw_input()
-    for step in plan:
-        print("Press [Enter] to proceed")
-        raw_input()
-        #print(step)
-        step = step[1:-2]
-        elements = step.split()
-
-        steps[int(elements[0][-1])](elements[1:len(elements)])
-
-
-    while False:
+    while True:
         
         ret, frame = cap.read()        
-    
+
         frame = frame[230:, 230:]
         for disk in disks:
             vision.getDiskPosition(frame, disk)
@@ -113,40 +91,15 @@ def open_gripper():
     return
 
 def gotoTower(tower):
-    if tower == 't1':
-        ur5e_arm.goto_joint_state(top_t1)
-    elif tower == 't2':
-        ur5e_arm.goto_joint_state(top_t2)
-    elif tower == 't3':
-        ur5e_arm.goto_joint_state(top_t3)
-    else:
-        print('AAAAAAAAAAAAAAAAAAAAAAAAA')
     return
     
 def lowerTower(tower):
-    if tower == 't1':
-        ur5e_arm.goto_joint_state(d1_t1)
-    elif tower == 't2':
-        ur5e_arm.goto_joint_state(d1_t2)
-    elif tower == 't3':
-        ur5e_arm.goto_joint_state(d1_t3)
-    else:
-        print('AAAAAAAAAAAAAAAAAAAAAAAAA')
     return
     
 def lowerTowerPlace(args):
     disk1 = args[0]
     disk2 = args[1]
     tower = args[2]
-    
-    if tower == 't1' and disk1 == 'a' and disk2 == 'b':
-        ur5e_arm.goto_joint_state(d3_t1)
-    if tower == 't1' and disk1 == 'b' and disk2 == 'c':
-        ur5e_arm.goto_joint_state(d2_t1)
-    if tower == 't2' and disk1 == 'a' and disk2 == 'b':
-        ur5e_arm.goto_joint_state(d2_t2)
-    else:
-        print('AAAAAAAAAAAAAAAAAAAAAAAAA')
     return
     
 def pickUp(args):

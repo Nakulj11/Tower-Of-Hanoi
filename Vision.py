@@ -8,13 +8,16 @@ class Vision(object):
     
 
     def getDiskPosition(self, frame, disk):
-        threshhold = 500
+        threshhold = 50
 
         position = (None, None)
         frameHSV = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
         mask = cv2.inRange(frameHSV, disk.lowHsv, disk.highHsv)
+        #cv2.imshow("Frame", frameHSV)
+        #cv2.waitKey(1)
 
-        contours, hierarchy = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        img, contours, hierarchy = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        
 
         contour_sizes = [(cv2.contourArea(contour), contour) for contour in contours]  
     
@@ -30,8 +33,6 @@ class Vision(object):
                 M = cv2.moments(biggest_contour)
                 cX = int(M["m10"] / M["m00"])
                 cY = int(M["m01"] / M["m00"])
-
-                
 
                 
                 position = (cX, cY)
@@ -71,16 +72,18 @@ class Vision(object):
         return position
 
     def getInitialState(self, frame, disks, towers):
-        distanceThreshhold = 50
+        distanceThreshhold = 55
 
         state = []
         for tower in towers:
             diskList = []
             towerPosition = self.getTowerPosition(frame, tower)
+            print(tower.name + str(towerPosition))
             if towerPosition[0] == None:
                 continue
             for disk in disks:
                 diskPosition = self.getDiskPosition(frame, disk)
+                print(disk.name + str(diskPosition))
                 if diskPosition[0] == None:
                     continue
                 if(abs(diskPosition[0]-towerPosition[0])<=distanceThreshhold):
@@ -93,7 +96,7 @@ class Vision(object):
                 min_index = i
 
                 for j in range(i+1, len(state[z])):
-                    if(self.getDiskPosition(frame, state[z][i])[1]<self.getDiskPosition(frame, state[z][j])[1]):
+                    if(self.getDiskPosition(frame, state[z][i])[1]>self.getDiskPosition(frame, state[z][j])[1]):
                         min_index = j
                 
 
