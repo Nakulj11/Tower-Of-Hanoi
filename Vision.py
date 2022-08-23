@@ -97,23 +97,23 @@ class Vision(object):
         return result
         
     def convert_color_to_depth(self, point):
-        result = np.array((self.M2 * np.vstack((np.matrix(point).reshape(2, 1), 1)))[0:3, :].reshape(1, 3))[0:2]
+        result = np.array((self.M2 * np.vstack((np.matrix(point).reshape(2, 1), 1)))[0:3, :].reshape(1, 3))[0]
 
         return result
         
     def convert_depth_to_world(self, point):
-        result = np.array((self.M * np.vstack((np.matrix(point).reshape(3, 1), 1)).reshape(1, 3)))
+        result = np.array(( self.M * np.vstack((np.matrix(point).reshape(3, 1), 1)) )).reshape((3,))
 
         return result
 
     #returns disk x y and depth
-    def getDiskPosition(self, frame, disk, depth):
+    def getDiskPosition(self, frame, disk):
         threshhold = 50
 
-        position = (None, None, None)
-        frameHSV = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+        position = (None, None)
+        frameHSV = cv2.cvtColor(frame, cv2.COLOR_RGB2HSV)
         mask = cv2.inRange(frameHSV, disk.lowHsv, disk.highHsv)
-        #cv2.imshow("Frame", frameHSV)
+        #cv2.imshow("Frame",frameHSV)
         #cv2.waitKey(1)
 
         img, contours, hierarchy = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
@@ -133,7 +133,7 @@ class Vision(object):
                 cY = int(M["m01"] / M["m00"])
 
                 
-                position = (cX, cY, depth[cY, cX])
+                position = (cX, cY)
 
                 cv2.rectangle(frame,(x,y),(x+w,y+h),(0,255,0),2)
                 cv2.putText(frame, disk.name, (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (36,255,12), 2)
@@ -144,9 +144,9 @@ class Vision(object):
 
 
     # returns tower x y and depth
-    def getTowerPosition(self, frame, tower, depth):
+    def getTowerPosition(self, frame, tower):
         
-        position = (None, None, None)
+        position = (None, None)
 
         arucoDict = cv2.aruco.Dictionary_get(tower.dictionary)
         arucoParams = cv2.aruco.DetectorParameters_create()
@@ -168,26 +168,26 @@ class Vision(object):
                     cv2.putText(frame, tower.name, (int(x), int(y)+20), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (36,255,12), 2)
                     
                     
-                    position = (x, y, depth[int(y), int(x)])
+                    position = (x, y)
         except: 
-            position = (None, None, None)
+            position = (None, None)
 
         return position
 
     # returns [tower1_state, tower2_state, tower3_state]
     #towerX_state is a list of disks from top to bottom
-    def getInitialState(self, frame, disks, towers, depth):
+    def getInitialState(self, frame, disks, towers):
         distanceThreshhold = 55
 
         state = []
         for tower in towers:
             diskList = []
-            towerPosition = self.getTowerPosition(frame, tower, depth)
+            towerPosition = self.getTowerPosition(frame, tower)
             print(tower.name + str(towerPosition))
             if towerPosition[0] == None:
                 continue
             for disk in disks:
-                diskPosition = self.getDiskPosition(frame, disk, depth)
+                diskPosition = self.getDiskPosition(frame, disk)
                 print(disk.name + str(diskPosition))
                 if diskPosition[0] == None:
                     continue
@@ -201,12 +201,23 @@ class Vision(object):
                 min_index = i
 
                 for j in range(i+1, len(state[z])):
-                    if(self.getDiskPosition(frame, state[z][i], depth)[1]>self.getDiskPosition(frame, state[z][j], depth)[1]):
+                
+                    
+                    if(self.getDiskPosition(frame, state[z][i])[1]>self.getDiskPosition(frame, state[z][j])[1]):
+                        print(state[z][i].name + " " + state[z][j].name)
+                        print(str(self.getDiskPosition(frame, state[z][i])) + " " + str(self.getDiskPosition(frame, state[z][j])))
                         min_index = j
                 
-
-                (state[z][i], state[z][min_index]) = (state[z][min_index], state[z][i])
-
+                temp = state[z][i]
+                state[z][i] = state[z][min_index]
+                state[z][min_index] = temp
+                #(state[z][i], state[z][min_index]) = (state[z][min_index], state[z][i])
+       
+       
+        for i in state:
+            for j in i:
+                print(j.name)
+       
         return state
 
 

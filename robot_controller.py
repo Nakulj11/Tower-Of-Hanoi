@@ -41,7 +41,7 @@ class MoveGroupPythonInterface(object):
     #the moveit_commander is what is responsible for sending info the moveit controllers
     moveit_commander.roscpp_initialize(sys.argv)
     #initialize node
-    rospy.init_node('demo_xyz_playback', anonymous=True)
+    #rospy.init_node('demo_xyz_playback', anonymous=True)
     #Instantiate a `RobotCommander`_ object. Provides information such as the robot's kinematic model and the robot's current joint states
     robot = moveit_commander.RobotCommander()
     #Instantiate a `PlanningSceneInterface`_ object. This provides a remote interface for getting, setting, and updating the robot's internal understanding of the surrounding world:
@@ -91,3 +91,25 @@ class MoveGroupPythonInterface(object):
     self.move_group.go(joint_goal, wait=True)
     # Calling ``stop()`` ensures that there is no residual movement
     self.move_group.stop()
+    
+  def goto_xyz(self, xyz):
+    wpose = self.move_group.get_current_pose().pose
+    wpose.position.x = xyz[0]
+    wpose.position.y = xyz[1]
+    wpose.position.z = xyz[2]
+    waypoints = []
+    waypoints.append(copy.deepcopy(wpose))
+    (start_plan, start_fraction) = self.move_group.compute_cartesian_path(waypoints, 0.001, 0.0)
+    self.display_trajectory(start_plan)
+    print('Press [Enter] to execute')
+    raw_input()
+    self.move_group.execute(start_plan, wait=True)
+    self.move_group.stop()
+    
+  def display_trajectory(self, plan):
+    #ask rviz to display the trajectory
+    display_trajectory = moveit_msgs.msg.DisplayTrajectory()
+    display_trajectory.trajectory_start = self.robot.get_current_state()
+    display_trajectory.trajectory.append(plan)
+    # Publish
+    self.display_trajectory_publisher.publish(display_trajectory);

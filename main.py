@@ -7,28 +7,36 @@ from GameElements import Tower
 from Vision import Vision
 import cv2
 import os
+import rospy
+from sensor_msgs.msg import Image
+from cv_bridge import CvBridge
+import threading
 
 from robot_controller import MoveGroupPythonInterface
 
 ur5e_arm = MoveGroupPythonInterface()
 
-top_t1 = [0.7324, -0.8476, 1.2450, -1.9356, -1.5114, 0.7473]
-top_t3 = [0.8781, -1.0205, 1.5414, -2.0682, -1.5070, 0.8929]
-top_t2 = [0.8030, -0.9451, 1.4182, -2.0156, -1.5091, 0.8179]
+top_t1 = [0.7604665756225586, -0.701134518986084, 0.9556377569781702, -1.809092184106344, -1.5727341810809534, 5.453069686889648]
+top_t3 = [0.8975424766540527, -0.8855036062053223, 1.3079608122455042, -1.9770733318724574, -1.570251766835348, 5.589624404907227]
+top_t2 = [0.826603889465332, -0.8073514264873047, 1.1567061583148401, -1.9038769207396449, -1.5715106169330042, 5.518957614898682]
 
-d1_t1 = [0.7203068733215332, -0.7149899762919922, 1.3243983427630823, -2.171155115167135, -1.497375790272848, 0.7992434501647949]
-d2_t1 = [0.7203307151794434, -0.7404855054667969, 1.316965405141012, -2.138294836083883, -1.4973519484149378, 0.7992434501647949]
-d3_t1 = [0.7173700332641602, -0.7774384778789063, 1.312967602406637, -2.097036977807516, -1.497399632130758, 0.7962632179260254]
+d1_t1 = [0.7596287727355957, -0.6340959829143067, 1.0258014837848108, -1.9463488064207972, -1.5727818647967737, 5.452148914337158]
+d2_t1 = [0.7665920257568359, -0.6637891095927735, 1.0365989843951624, -1.927425046960348, -1.5726020971881312, 5.459064483642578]
+d3_t1 = [0.7604665756225586, -0.6725123685649415, 0.9960525671588343, -1.8780952892699183, -1.5727461020099085, 5.452998161315918]
 
-d1_t2 = [0.7955574989318848, -0.8030703824809571, 1.5014269987689417, -2.265691419641012, -1.4967759291278284, 0.874506950378418]
-d2_t2 = [0.7956056594848633, -0.8435257238200684, 1.490213696156637, -2.214076181451315, -1.496739689503805, 0.8745427131652832]
+d1_t2 = [0.8266158103942871, -0.7413008970073243, 1.215790096913473, -2.0291296444334925, -1.5714986960040491, 5.518837928771973]
+d2_t2 = [0.8304023742675781, -0.7639740270427247, 1.213093105946676, -2.00378479580068, -1.5713909308062952, 5.522709846496582]
+d3_t2 = [0.8304266929626465, -0.7858198446086426, 1.1951525847064417, -1.9639092884459437, -1.5714510122882288, 5.522722244262695]
 
-d1_t3 = [0.8758759498596191, -0.8788140577128907, 1.6598723570453089, -2.354396482507223, -1.4965842405902308, 0.9549274444580078]
+d1_t3 = [0.8974943161010742, -0.8219168943217774, 1.3572543303119105, -2.089963575402731, -1.570251766835348, 5.589576721191406]
+d2_t3 = [0.9004526138305664, -0.8444345754436036, 1.3500712553607386, -2.060268064538473, -1.570179287587301, 5.59259033203125]
+d3_t3 = [0.9004883766174316, -0.8684976857951661, 1.331806484852926, -2.017904897729391, -1.5702036062823694, 5.59259033203125]
+
 
 #disks, towers, and color ranges
-disks = [Disk("a", np.array([80,110,100]), np.array([90,255,255])), #Green
-         Disk("b", np.array([90,100,100]), np.array([100,255,255])), #Light Blue 
-         Disk("c", np.array([101,120,90]), np.array([130,255,255])) #Dark Blue 
+disks = [Disk("a", np.array([73,90,100]), np.array([90,255,255])), #Green
+         Disk("b", np.array([90,90,100]), np.array([98,255,255])), #Light Blue 
+         Disk("c", np.array([99,100,90]), np.array([130,256,256])) #Dark Blue 
          ]
          
 
@@ -37,30 +45,89 @@ towers = [Tower("t1", cv2.aruco.DICT_4X4_50, 0),
           Tower("t3", cv2.aruco.DICT_4X4_50, 2)
         ]
 
-cap = None
 vision = None
+vh = None
+
+class VisionHandler(object):
+
+    def __init__(self):
+        rospy.init_node('main', anonymous=True)
+        self.bridge = CvBridge()
+        self.rgb_img = None
+        self.depth_img = None
+        self.rgb_sub = rospy.Subscriber('/camera/rgb/image_raw', Image, self.rgb_callback)
+        self.depth_sub = rospy.Subscriber('/camera/depth/image_raw', Image, self.depth_callback)
+        
+    def rgb_callback(self, msg):
+        self.rgb_img = self.bridge.imgmsg_to_cv2(msg, desired_encoding='passthrough')
+        
+        
+    def depth_callback(self, msg):
+        self.depth_img = self.bridge.imgmsg_to_cv2(msg, desired_encoding='passthrough')
+        
+    def get_rgb_img(self):
+        return np.copy(self.rgb_img)
+        
+    def get_depth_img(self):
+        return np.copy(self.depth_img)
+
+point = (0, 0)
+    
+    
+# thread to display image frame and depth
+def displayThread(vh):
+    
+    #frame = vh.get_rgb_img() 
+    #cv2.imshow("Frame", frame)
+
+    while True:
+        
+        #displays every disk and tower
+
+        #ret, frame = cap.read()
+        frame = vh.get_rgb_img() 
+        #depth = vh.get_depth_img()
+    
+        #frame = frame[230:, 230:]
+        #depth = depth[230:, 230:]
+
+        #print(str(frame.shape) + " " + str(depth.shape))
+
+        for disk in disks:
+            vision.getDiskPosition(frame, disk)
+        
+        for tower in towers:
+            vision.getTowerPosition(frame, tower)
+
+
+        cv2.imshow("Frame", frame)
+        #cv2.imshow("Depth", depth)
+
+        key = cv2.waitKey(1)
+
+        if key == ord("q"):
+            # print(vision.convertToRealWorld([9, 98, 21]))
+            break
+
+
 
 def main():
 
-    #video captures
-    global cap
-    cap = cv2.VideoCapture(2)
-
-    time.sleep(5.0)
+    global vh
+    vh = VisionHandler()
+    
+    rospy.sleep(1.0)
 
     global vision
     vision = Vision()
 
 
-
-    for i in range(75):
-        ret, frame = cap.read()
+    x = threading.Thread(target=displayThread, args=(vh,))
+    x.start()
     
-    ret, frame = cap.read()
-    frame = frame[230:, 230:]
-    cap.release()
     
-    setInitialState(vision.getInitialState(frame, disks, towers))
+    #reads and writes inital state then runs planner
+    setInitialState(vision.getInitialState(vh.get_rgb_img(), disks, towers))
     plan = getPlan("domainHanoi.pddl", "problemHanoi.pddl")
     #plan = []
     steps = {1: pickUp,
@@ -70,36 +137,43 @@ def main():
 
     print("Press [Enter] to start")
     raw_input()
+
+    #iterates through every step of the plan and runs corresponding method
     for step in plan:
         print("Press [Enter] to proceed")
         raw_input()
-        #print(step)
+        print(step)
         step = step[1:-2]
         elements = step.split()
 
         steps[int(elements[0][-1])](elements[1:len(elements)])
 
 
-    while False:
+    #while True:
+        #pass
+        #frame = vh.get_rgb_img()
         
-        ret, frame = cap.read()        
+        #for disk in disks:
+            #vision.getDiskPosition(frame, disk)
+        
+        #for tower in towers:
+            #vision.getTowerPosition(frame, tower)
+
+        #cv2.imshow("Frame", frame)
+
+
+        #key = cv2.waitKey(1)
+
+        #if key == ord("q"):
+            #break
+
+def color_to_robot(pos):
+    depth_pos = vision.convert_color_to_depth(pos)
     
-        frame = frame[230:, 230:]
-        for disk in disks:
-            vision.getDiskPosition(frame, disk)
-        
-        for tower in towers:
-            vision.getTowerPosition(frame, tower)
-
-        cv2.imshow("Frame", frame)
-
-
-        key = cv2.waitKey(1)
-
-        if key == ord("q"):
-            break
-
-
+    z = vh.get_depth_img()[int(depth_pos[1]), int(depth_pos[0])]
+    
+    robot_pos = vision.convert_depth_to_world([int(depth_pos[0]), int(depth_pos[1]), z])
+    return robot_pos
 
 
 def close_gripper():
@@ -139,12 +213,38 @@ def lowerTowerPlace(args):
     disk2 = args[1]
     tower = args[2]
     
-    if tower == 't1' and disk1 == 'a' and disk2 == 'b':
-        ur5e_arm.goto_joint_state(d3_t1)
-    if tower == 't1' and disk1 == 'b' and disk2 == 'c':
-        ur5e_arm.goto_joint_state(d2_t1)
-    if tower == 't2' and disk1 == 'a' and disk2 == 'b':
-        ur5e_arm.goto_joint_state(d2_t2)
+    state = vision.getInitialState(vh.get_rgb_img(), disks, towers)
+    
+    disk2_position = -1
+    
+    for i in range(len(state)):
+        for j in range(len(state[i])):
+            if state[i][j] == getDisk(disk2):
+                if len(state[i])==3:
+                    disk2_position = 1
+                elif len(state[i])==1:
+                    disk2_position = 0
+                elif len(state[i])==2:
+                    if j == 0:
+                        disk2_position = 1
+                    elif j == 1:
+                        disk2_position = 0 
+    print(disk2_position)
+    if tower == 't1' :
+        if disk2_position == 0:
+            ur5e_arm.goto_joint_state(d2_t1)
+        elif disk2_position == 1:
+          ur5e_arm.goto_joint_state(d3_t1)
+    if tower == 't2' :
+        if disk2_position == 0:
+            ur5e_arm.goto_joint_state(d2_t2)
+        elif disk2_position == 1:
+          ur5e_arm.goto_joint_state(d3_t2)
+    if tower == 't3':
+        if disk2_position == 0:
+            ur5e_arm.goto_joint_state(d2_t3)
+        elif disk2_position == 1:
+          ur5e_arm.goto_joint_state(d3_t3)
     else:
         print('AAAAAAAAAAAAAAAAAAAAAAAAA')
     return
@@ -158,7 +258,7 @@ def pickUp(args):
     gotoTower(args[-1])
 
 def pickUpFromStack(args):
-    print("pickUpFromeStack")
+    print("pickUpFromStack")
     print(args)
     gotoTower(args[-1])
     lowerTowerPlace(args)
@@ -169,13 +269,17 @@ def placeOnTower(args):
     print("placeOnTower")
     print(args)
     gotoTower(args[-1])
+    lowerTower(args[1])
     open_gripper()
+    gotoTower(args[-1])
 
 def placeOnStack(args):
     print("placeOnStack")
     print(args)
     gotoTower(args[-1])
+    lowerTowerPlace(args)
     open_gripper()
+    gotoTower(args[-1])
 
 
 def getDisk(name):
@@ -187,7 +291,7 @@ def getDisk(name):
 
 def getTower(name):
     for tower in towers:
-        if tower.name == tower:
+        if tower.name == name:
             return tower
 
     return None
@@ -229,3 +333,4 @@ def setInitialState(state):
                     
 if __name__ == "__main__":
     main()
+
