@@ -14,8 +14,11 @@ import threading
 
 from robot_controller import MoveGroupPythonInterface
 
+
 ur5e_arm = MoveGroupPythonInterface()
 
+
+# joint states for every position
 top_t1 = [0.7604665756225586, -0.701134518986084, 0.9556377569781702, -1.809092184106344, -1.5727341810809534, 5.453069686889648]
 top_t3 = [0.8975424766540527, -0.8855036062053223, 1.3079608122455042, -1.9770733318724574, -1.570251766835348, 5.589624404907227]
 top_t2 = [0.826603889465332, -0.8073514264873047, 1.1567061583148401, -1.9038769207396449, -1.5715106169330042, 5.518957614898682]
@@ -48,6 +51,7 @@ towers = [Tower("t1", cv2.aruco.DICT_4X4_50, 0),
 vision = None
 vh = None
 
+#vision handler, subscribes to color and depth image
 class VisionHandler(object):
 
     def __init__(self):
@@ -122,6 +126,7 @@ def main():
     vision = Vision()
 
 
+    #starts vision thread
     x = threading.Thread(target=displayThread, args=(vh,))
     x.start()
     
@@ -167,6 +172,7 @@ def main():
         #if key == ord("q"):
             #break
 
+#converts disk color coordinate to real world robot pov coordinates
 def color_to_robot(pos):
     depth_pos = vision.convert_color_to_depth(pos)
     
@@ -176,6 +182,7 @@ def color_to_robot(pos):
     return robot_pos
 
 
+#prompts close and open gripper
 def close_gripper():
     print("Close the gripper then press [Enter]")
     raw_input()
@@ -186,6 +193,7 @@ def open_gripper():
     raw_input()
     return
 
+#goes to the top of tower specified in argument
 def gotoTower(tower):
     if tower == 't1':
         ur5e_arm.goto_joint_state(top_t1)
@@ -197,6 +205,7 @@ def gotoTower(tower):
         print('AAAAAAAAAAAAAAAAAAAAAAAAA')
     return
     
+#lowers to the very bottom of a tower
 def lowerTower(tower):
     if tower == 't1':
         ur5e_arm.goto_joint_state(d1_t1)
@@ -208,15 +217,19 @@ def lowerTower(tower):
         print('AAAAAAAAAAAAAAAAAAAAAAAAA')
     return
     
+#very sketchy
+#lowers to specific part of tower based on state 
 def lowerTowerPlace(args):
     disk1 = args[0]
     disk2 = args[1]
     tower = args[2]
     
+    #gets state
     state = vision.getInitialState(vh.get_rgb_img(), disks, towers)
     
     disk2_position = -1
     
+    #really sketch part to determine how low to go
     for i in range(len(state)):
         for j in range(len(state[i])):
             if state[i][j] == getDisk(disk2):
@@ -230,6 +243,8 @@ def lowerTowerPlace(args):
                     elif j == 1:
                         disk2_position = 0 
     print(disk2_position)
+
+    #lowers to specific height based on tower
     if tower == 't1' :
         if disk2_position == 0:
             ur5e_arm.goto_joint_state(d2_t1)
@@ -249,6 +264,7 @@ def lowerTowerPlace(args):
         print('AAAAAAAAAAAAAAAAAAAAAAAAA')
     return
     
+#pick up [targetDisk, tower]
 def pickUp(args):
     print("pickUp")
     print(args)
@@ -257,6 +273,7 @@ def pickUp(args):
     close_gripper()
     gotoTower(args[-1])
 
+#pick up from stack [targetDisk, diskBelowTarget, tower]
 def pickUpFromStack(args):
     print("pickUpFromStack")
     print(args)
@@ -265,6 +282,8 @@ def pickUpFromStack(args):
     close_gripper()
     gotoTower(args[-1])
 
+
+#place on tower [targetDisk, tower]
 def placeOnTower(args):
     print("placeOnTower")
     print(args)
@@ -273,6 +292,7 @@ def placeOnTower(args):
     open_gripper()
     gotoTower(args[-1])
 
+#place on tower [targetDisk, diskBelowTarget, tower]
 def placeOnStack(args):
     print("placeOnStack")
     print(args)
@@ -281,7 +301,7 @@ def placeOnStack(args):
     open_gripper()
     gotoTower(args[-1])
 
-
+#gets disk based on name
 def getDisk(name):
     for disk in disks:
         if disk.name == name:
@@ -289,6 +309,7 @@ def getDisk(name):
 
     return None
 
+#gets disk based on tower
 def getTower(name):
     for tower in towers:
         if tower.name == name:
@@ -297,6 +318,7 @@ def getTower(name):
     return None
 
 
+#runs domain and plan with pyperplan
 def getPlan(domain, problem):
     os.system("pyperplan " + domain + " " + problem)
     with open(problem + ".soln", 'r') as file:
@@ -305,24 +327,29 @@ def getPlan(domain, problem):
     return lines
 
 
-
+#sets initial state to problemHanoi.pddl
 def setInitialState(state):
     initial = ""
 
     for i in range(len(state)):
+        #empty tower for a tower with 0 disks
         if(len(state[i])==0):
             initial += "(EMPTYTOWER " + towers[i].name + ") "
         else:
+            
             for j in range(len(state[i])):
+                #if it's the only disk, it's the top and bottom of the tower 
                 if j==0:
                     initial += "(TOPOFTOWER " + state[i][j].name + " " + towers[i].name + ") "
                     if j == len(state[i])-1:
                         initial += "(BOTTOMOFTOWER " + state[i][j].name + " " + towers[i].name + ") "
                 else:
+                    #otherwise sets on disk and bottom
                     initial += "(ONDISK " + state[i][j-1].name + " " + state[i][j].name + " " + towers[i].name + ") "
                     if j == len(state[i])-1:
                         initial += "(BOTTOMOFTOWER " + state[i][j].name + " " + towers[i].name + ") "
     
+    #inserts pddl into problemHanoi file
     with open("problemHanoiTemplate.pddl", 'r') as file:
         lines = file.readlines()
 

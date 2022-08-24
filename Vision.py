@@ -8,6 +8,8 @@ class Vision(object):
     def __init__(self):
         self.setAffineTransformation()
     
+    #sad attempt at setting transformation from color fram pixel points to 
+    #real world robot coordinates
     def setAffineTransformation(self):
 
         #source and destination points
@@ -96,11 +98,13 @@ class Vision(object):
 
         return result
         
+    #converts an array of 2 pts from color frame pts to depth frame pts
     def convert_color_to_depth(self, point):
         result = np.array((self.M2 * np.vstack((np.matrix(point).reshape(2, 1), 1)))[0:3, :].reshape(1, 3))[0]
 
         return result
         
+    #converts [x, y, depth] to [i, j, k] for the robot
     def convert_depth_to_world(self, point):
         result = np.array(( self.M * np.vstack((np.matrix(point).reshape(3, 1), 1)) )).reshape((3,))
 
@@ -110,12 +114,14 @@ class Vision(object):
     def getDiskPosition(self, frame, disk):
         threshhold = 50
 
+        #creates HSV mask
         position = (None, None)
         frameHSV = cv2.cvtColor(frame, cv2.COLOR_RGB2HSV)
         mask = cv2.inRange(frameHSV, disk.lowHsv, disk.highHsv)
         #cv2.imshow("Frame",frameHSV)
         #cv2.waitKey(1)
 
+        #finds the biggest contours
         img, contours, hierarchy = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         
 
@@ -129,12 +135,14 @@ class Vision(object):
                 x,y,w,h = cv2.boundingRect(biggest_contour)  
                 
                 M = cv2.moments(biggest_contour)
+                #center pixels 
                 cX = int(M["m10"] / M["m00"])
                 cY = int(M["m01"] / M["m00"])
 
                 
                 position = (cX, cY)
 
+                #draws rectangles
                 cv2.rectangle(frame,(x,y),(x+w,y+h),(0,255,0),2)
                 cv2.putText(frame, disk.name, (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (36,255,12), 2)
 
@@ -148,6 +156,7 @@ class Vision(object):
         
         position = (None, None)
 
+        #gets aruco marker position
         arucoDict = cv2.aruco.Dictionary_get(tower.dictionary)
         arucoParams = cv2.aruco.DetectorParameters_create()
         (corners, ids, rejected) = cv2.aruco.detectMarkers(frame, arucoDict, parameters=arucoParams)
@@ -155,6 +164,7 @@ class Vision(object):
         try:
             for (markerCorner, markerID) in zip(corners, ids):
                 if markerID == tower.id:
+                    #calculating center of the marker
                     x = 0
                     y = 0
                     for i in range(4):
@@ -164,7 +174,7 @@ class Vision(object):
                     x /= 4
                     y /= 4
 
-
+                    #putting text at tower position
                     cv2.putText(frame, tower.name, (int(x), int(y)+20), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (36,255,12), 2)
                     
                     
@@ -176,10 +186,13 @@ class Vision(object):
 
     # returns [tower1_state, tower2_state, tower3_state]
     #towerX_state is a list of disks from top to bottom
+    #example for normal configuration
+    #[[a, b, c],[],[]]
     def getInitialState(self, frame, disks, towers):
         distanceThreshhold = 55
 
         state = []
+        #goes through each tower
         for tower in towers:
             diskList = []
             towerPosition = self.getTowerPosition(frame, tower)
@@ -187,15 +200,18 @@ class Vision(object):
             if towerPosition[0] == None:
                 continue
             for disk in disks:
+                #goes through and gets every disk position
                 diskPosition = self.getDiskPosition(frame, disk)
                 print(disk.name + str(diskPosition))
                 if diskPosition[0] == None:
                     continue
+                #checks if disk is within a certain threshold of tower x
                 if(abs(diskPosition[0]-towerPosition[0])<=distanceThreshhold):
                     diskList.append(disk)
             
             state.append(diskList)
         
+        #sorts disks from top to bottom based on disk position y
         for z in range(len(state)):
             for i in range(len(state[z])):
                 min_index = i
