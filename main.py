@@ -244,7 +244,7 @@ def lowerTowerPlace(args):
                     elif j == 1:
                         disk2_position = 0 
     """
-    
+    #determines how low to go when grabbing/placing disk
     for i in range(len(state)):
         tower = state[i]
         tower.reverse()
