@@ -229,6 +229,7 @@ def lowerTowerPlace(args):
     
     disk2_position = -1
     
+    """"
     #really sketch part to determine how low to go
     for i in range(len(state)):
         for j in range(len(state[i])):
@@ -242,6 +243,14 @@ def lowerTowerPlace(args):
                         disk2_position = 1
                     elif j == 1:
                         disk2_position = 0 
+    """
+    
+    for i in range(len(state)):
+        tower = state[i]
+        tower.reverse()
+        for j in range(tower):
+            if tower[j] == getDisk(disk2):
+                disk2_position = j
     print(disk2_position)
 
     #lowers to specific height based on tower
