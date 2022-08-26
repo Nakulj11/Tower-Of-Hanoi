@@ -10,4 +10,4 @@ Included is a vision system with the Intel RealSense Camera that is able to dete
 
 The combination of the vision system, motion planning, and task planning allows the High-Level System to be able to solve the Tower of Hanoi in a robust manner
 
-Here is a demo of how it looks: https://www.youtube.com/watch?v=mhNrRQWjjVI 
+Here is a demo of how it looks: https://www.youtube.com/watch?v=cZzbaRInxHk&t=2s
